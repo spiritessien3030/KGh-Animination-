@@ -1,0 +1,44 @@
+name: 🎬 Render Pipeline
+
+on:
+  push:
+    paths:
+      - "shots/**"
+      - "pipeline/**"
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        shot: [SH001]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y blender ffmpeg python3
+
+      - name: Render Frames
+        run: |
+          blender -b shots/${{ matrix.shot }}/lighting.blend \
+          -P pipeline/publish.py
+
+      - name: Convert Frames to Video
+        run: |
+          mkdir -p renders/final
+          ffmpeg -framerate 24 \
+          -i renders/frames/%04d.png \
+          -c:v libx264 -pix_fmt yuv420p \
+          renders/final/${{ matrix.shot }}.mp4
+
+      - name: Upload Render
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-${{ matrix.shot }}
+          path: renders/final/
